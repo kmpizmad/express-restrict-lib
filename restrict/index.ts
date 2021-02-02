@@ -1,7 +1,14 @@
 import { Request } from "express";
 import { Controller } from "../server/types";
 import { URL } from "url";
-import { FieldOptions, RestrictOptions, SearchParamOptions } from "./types";
+import {
+  BaseOptions,
+  CookieOptions,
+  FieldOptions,
+  HeaderOptions,
+  RestrictOptions,
+  SearchParamOptions,
+} from "./types";
 import {
   banParams,
   filterParams,
@@ -13,15 +20,13 @@ import { applyFieldOptions, applySearchParamOptions } from "./apply";
 class Restrict {
   private __fields: FieldOptions;
   private __searchParams: SearchParamOptions;
-  private __methods: string[] = [];
+  private __headers: HeaderOptions;
+  private __cookies: CookieOptions;
 
   constructor(options?: RestrictOptions) {
-    console.log(this.__fields);
-
     if (options) {
       this.__applyOptions(options);
     } else {
-      this.__methods.push("all");
     }
   }
 
@@ -32,7 +37,7 @@ class Restrict {
    */
   public fields(...args: string[]): Controller {
     const _fields: Controller = (req, res, next) => {
-      if (this.__isMethodAllowed(req)) {
+      if (this.__isMethodAllowed(this.__fields, req)) {
       } else {
         next();
       }
@@ -45,12 +50,50 @@ class Restrict {
 
   /**
    * @public
+   * @description Restricts or validates given search parameters.
+   * @param args Blacklisted query parameters. Bans every query parameter if none provided.
+   */
+  public searchParams(...args: string[]): Controller {
+    const searchParams_: Controller = (req, res, next) => {
+      if (this.__isMethodAllowed(this.__searchParams, req)) {
+        const baseUrl = req.protocol + "://" + req.get("host");
+        const { searchParams } = new URL(req.url, baseUrl);
+        const { keys, query } = params(searchParams);
+
+        const {
+          arguments: arguments_,
+          regexp,
+          regexpStrict,
+        } = this.__searchParams;
+
+        if (regexpStrict || regexp) {
+          if (regexpStrict) {
+            validateParams(query, regexpStrict, res, next, true);
+          }
+          if (regexp) {
+            validateParams(query, regexp, res, next);
+          }
+        } else if (arguments_ && arguments_.length > 0) {
+          filterParams(keys, [...arguments_, ...args], res, next);
+        } else {
+          banParams(keys, res, next);
+        }
+      } else {
+        next();
+      }
+    };
+
+    return searchParams_;
+  }
+
+  /**
+   * @public
    * @description Restricts given headers from requesting
    * @param args Blacklisted headers
    */
   public headers(...args: string[]): Controller {
     const _headers: Controller = (req, res, next) => {
-      if (this.__isMethodAllowed(req)) {
+      if (this.__isMethodAllowed(this.__headers, req)) {
       } else {
         next();
       }
@@ -63,38 +106,20 @@ class Restrict {
 
   /**
    * @public
-   * @description Restricts or validates given search parameters.
-   * @param args Blacklisted query parameters. Bans every query parameter if none provided.
+   * @description Restricts given cookies from requesting
+   * @param args Blacklisted cookies
    */
-  public searchParams(...args: string[]): Controller {
-    const _searchParams: Controller = (req, res, next) => {
-      if (this.__isMethodAllowed(req)) {
-        const baseUrl = req.protocol + "://" + req.get("host");
-        const { searchParams } = new URL(req.url, baseUrl);
-        const { keys, query } = params(searchParams);
-
-        const regexp = this.__searchParams
-          ? this.__searchParams.regexp
-          : undefined;
-        const sArgs = this.__searchParams
-          ? this.__searchParams.args
-          : undefined;
-
-        if ((!sArgs || sArgs.length === 0) && args.length === 0) {
-          banParams(keys, res, next);
-        } else {
-          if (regexp) {
-            validateParams(regexp, query, next);
-          } else {
-            filterParams(keys, sArgs || args, next);
-          }
-        }
+  public cookies(...args: string[]): Controller {
+    const _cookies: Controller = (req, res, next) => {
+      if (this.__isMethodAllowed(this.__cookies, req)) {
       } else {
         next();
       }
+
+      console.log(res, args);
     };
 
-    return _searchParams;
+    return _cookies;
   }
 
   /**
@@ -103,10 +128,6 @@ class Restrict {
    * @param options Configuration for the middleware
    */
   private __applyOptions(options: RestrictOptions): void {
-    this.__methods = options.methods
-      .split(",")
-      .map((method) => method.toLowerCase());
-
     const { fields, searchParams } = options;
 
     if (fields) {
@@ -125,11 +146,12 @@ class Restrict {
    * @description Checks if the configuration allows the used method
    * @param req The request object
    */
-  private __isMethodAllowed(req: Request): boolean {
-    return (
-      this.__methods.includes("all") ||
-      this.__methods.includes(req.method.toLowerCase())
-    );
+  private __isMethodAllowed(config: BaseOptions, req: Request): boolean {
+    const methods = config.methods
+      .split(",")
+      .map((method) => method.trim().toLowerCase());
+
+    return methods.includes(req.method.toLowerCase());
   }
 }
 

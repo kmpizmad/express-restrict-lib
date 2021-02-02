@@ -1,3 +1,4 @@
-import { startServer } from "./server";
+import server, { startServer } from "./server";
+import { port } from "./server/constants";
 
-startServer();
+startServer(server, port);

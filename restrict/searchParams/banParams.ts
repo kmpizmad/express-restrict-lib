@@ -9,12 +9,12 @@ export const banParams = (
   if (keys.length > 0) {
     const err: ErrorMessage = {
       name: "Error",
-      code: "ERR_FORBIDDEN",
+      code: "ERR_INVALID_ARGUMENT",
       message: "Search parameters are not allowed!",
-      status: 403,
+      status: 400,
     };
 
-    res.status(403);
+    res.status(400);
     next(err);
   } else {
     next();

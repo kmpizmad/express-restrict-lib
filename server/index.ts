@@ -1,19 +1,34 @@
-import express from "express";
+import express, { Application } from "express";
+import bodyParser from "body-parser";
 import router from "./routes";
-import { port } from "./constants";
 import { error, notFound } from "./middlewares/error";
 
-const server = express();
+export const createServer = (testing?: boolean) => {
+  const server = express();
 
-server.use(express.urlencoded({ extended: false }));
-server.use(express.json());
+  server.use(bodyParser.json());
+  server.use(bodyParser.urlencoded({ extended: true }));
 
-server.use("/", router);
-server.use(notFound);
-server.use(error);
+  if (!testing) {
+    server.use("/", router);
+  }
 
-export const startServer = () => {
-  server.listen(port, () => console.log("Server is listening on port", port));
+  return server;
 };
 
-export default server;
+export const startServer = (
+  server: Application,
+  port: number,
+  testing?: boolean
+) => {
+  server.use(notFound);
+  server.use(error);
+
+  return server.listen(port, () => {
+    if (!testing) {
+      console.log("Server is listening on port", port);
+    }
+  });
+};
+
+export default createServer();

@@ -11,15 +11,16 @@
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
     "outDir": "dist",
     "removeComments": true,
     "rootDir": ".",
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "target": "es6"
+    "target": "es6",
+    "typeRoots": ["node_modules/@types/"]
   },
   "include": ["index.ts", "restrict/"],
   "exclude": ["node_modules/", "dist/", "server/"]

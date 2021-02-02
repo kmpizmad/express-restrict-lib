@@ -3,10 +3,12 @@ import { FieldOptions, SearchParamOptions } from "./types";
 export const applyFieldOptions = (fields: FieldOptions): string[] => {
   let defaultFields = ["id", "createdAt", "updatedAt"];
 
-  if (fields.overrideDefault) {
-    defaultFields = fields.args;
-  } else {
-    defaultFields = [...defaultFields, ...fields.args];
+  if (fields.arguments) {
+    if (fields.overrideDefault) {
+      defaultFields = fields.arguments;
+    } else {
+      defaultFields = [...defaultFields, ...fields.arguments];
+    }
   }
 
   return defaultFields;
